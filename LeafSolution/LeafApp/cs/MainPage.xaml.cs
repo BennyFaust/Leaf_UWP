@@ -79,7 +79,7 @@ namespace CameraStarterKit
         // Rotation Helper to simplify handling rotation compensation for the camera streams
         private CameraRotationHelper _rotationHelper;
 
-        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("794181c4aadf4031a29f20548e438c46", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
+        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("KEYHERE", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
 
         #region Constructor, lifecycle and navigation
 
@@ -150,26 +150,7 @@ namespace CameraStarterKit
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="args"></param>
-        private async void SystemMediaControls_PropertyChanged(SystemMediaTransportControls sender, SystemMediaTransportControlsPropertyChangedEventArgs args)
-        {
-            await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () =>
-            {
-                // Only handle this event if this page is currently being displayed
-                if (args.Property == SystemMediaTransportControlsProperty.SoundLevel && Frame.CurrentSourcePageType == typeof(MainPage))
-                {
-                    // Check to see if the app is being muted. If so, it is being minimized.
-                    // Otherwise if it is not initialized, it is being brought into focus.
-                    if (sender.SoundLevel == SoundLevel.Muted)
-                    {
-                        await CleanupCameraAsync();
-                    }
-                    else if (!_isInitialized)
-                    {
-                        await InitializeCameraAsync();
-                    }
-                }
-            });
-        }
+
 
 
 
@@ -221,35 +202,16 @@ namespace CameraStarterKit
             }
             else
             {
-                await StopRecordingAsync();
+                Debug.WriteLine("Stopping recording...");
+
+                _isRecording = false;
+
             }
 
             // After starting or stopping video recording, update the UI to reflect the MediaCapture state
             UpdateCaptureControls();
         }
 
-        private async void HardwareButtons_CameraPressed(object sender, CameraEventArgs e)
-        {
-            await TakePhotoAsync();
-        }
-
-        private async void MediaCapture_RecordLimitationExceeded(MediaCapture sender)
-        {
-            // This is a notification that recording has to stop, and the app is expected to finalize the recording
-
-            await StopRecordingAsync();
-
-            await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => UpdateCaptureControls());
-        }
-
-        private async void MediaCapture_Failed(MediaCapture sender, MediaCaptureFailedEventArgs errorEventArgs)
-        {
-            Debug.WriteLine("MediaCapture_Failed: (0x{0:X}) {1}", errorEventArgs.Code, errorEventArgs.Message);
-
-            await CleanupCameraAsync();
-
-            await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => UpdateCaptureControls());
-        }
 
         #endregion Event handlers
 
@@ -278,9 +240,7 @@ namespace CameraStarterKit
                 // Create MediaCapture and its settings
                 _mediaCapture = new MediaCapture();
 
-                // Register for a notification when video recording has reached the maximum time and when something goes wrong
-                _mediaCapture.RecordLimitationExceeded += MediaCapture_RecordLimitationExceeded;
-                _mediaCapture.Failed += MediaCapture_Failed;
+
 
                 var settings = new MediaCaptureInitializationSettings { VideoDeviceId = cameraDevice.Id };
 
@@ -428,22 +388,6 @@ namespace CameraStarterKit
             Debug.WriteLine("Taking photo...");
             await _mediaCapture.CapturePhotoToStreamAsync(ImageEncodingProperties.CreateJpeg(), stream);
 
-            try
-            {
-                var file = await _captureFolder.CreateFileAsync("SimplePhoto.jpg", CreationCollisionOption.GenerateUniqueName);
-                Debug.WriteLine("Photo taken! Saving to " + file.Path);
-
-                var photoOrientation = CameraRotationHelper.ConvertSimpleOrientationToPhotoOrientation(_rotationHelper.GetCameraCaptureOrientation());
-
-                await ReencodeAndSavePhotoAsync(stream, file, photoOrientation);
-                Debug.WriteLine("Photo saved!");
-            }
-            catch (Exception ex)
-            {
-                // File I/O errors are reported as exceptions
-                Debug.WriteLine("Exception when taking a photo: " + ex.ToString());
-            }
-
             // Done taking a photo, so re-enable the button
             VideoButton.IsEnabled = true;
             VideoButton.Opacity = 1;
@@ -455,87 +399,22 @@ namespace CameraStarterKit
         /// <returns></returns>
         private async Task StartRecordingAsync()
         {
-            try
-            {
-                // Create storage file for the capture
-                var videoFile = await _captureFolder.CreateFileAsync("SimpleVideo.mp4", CreationCollisionOption.GenerateUniqueName);
 
-                var encodingProfile = MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Auto);
-
-                // Calculate rotation angle, taking mirroring into account if necessary
-                var rotationAngle = CameraRotationHelper.ConvertSimpleOrientationToClockwiseDegrees(_rotationHelper.GetCameraCaptureOrientation());
-                encodingProfile.Video.Properties.Add(RotationKey, PropertyValue.CreateInt32(rotationAngle));
-
-                Debug.WriteLine("Starting recording to " + videoFile.Path);
-
-                await _mediaCapture.StartRecordToStorageFileAsync(encodingProfile, videoFile);
                 _isRecording = true;
 
-                Debug.WriteLine("Started recording!");
-            }
-            catch (Exception ex)
-            {
-                // File I/O errors are reported as exceptions
-                Debug.WriteLine("Exception when starting video recording: " + ex.ToString());
-            }
         }
 
         /// <summary>
         /// Stops recording a video
         /// </summary>
         /// <returns></returns>
-        private async Task StopRecordingAsync()
-        {
-            Debug.WriteLine("Stopping recording...");
 
-            _isRecording = false;
-            await _mediaCapture.StopRecordAsync();
-
-            Debug.WriteLine("Stopped recording!");
-        }
 
         /// <summary>
         /// Cleans up the camera resources (after stopping any video recording and/or preview if necessary) and unregisters from MediaCapture events
         /// </summary>
         /// <returns></returns>
-        private async Task CleanupCameraAsync()
-        {
-            Debug.WriteLine("CleanupCameraAsync");
-
-            if (_isInitialized)
-            {
-                // If a recording is in progress during cleanup, stop it to save the recording
-                if (_isRecording)
-                {
-                    await StopRecordingAsync();
-                }
-
-                if (_isPreviewing)
-                {
-                    // The call to stop the preview is included here for completeness, but can be
-                    // safely removed if a call to MediaCapture.Dispose() is being made later,
-                    // as the preview will be automatically stopped at that point
-                    await StopPreviewAsync();
-                }
-
-                _isInitialized = false;
-            }
-
-            if (_mediaCapture != null)
-            {
-                _mediaCapture.RecordLimitationExceeded -= MediaCapture_RecordLimitationExceeded;
-                _mediaCapture.Failed -= MediaCapture_Failed;
-                _mediaCapture.Dispose();
-                _mediaCapture = null;
-            }
-
-            if (_rotationHelper != null)
-            {
-                _rotationHelper.OrientationChanged -= RotationHelper_OrientationChanged;
-                _rotationHelper = null;
-            }
-        }
-
+       
         #endregion MediaCapture methods
 
 
@@ -573,7 +452,6 @@ namespace CameraStarterKit
                     }
                     else
                     {
-                        await CleanupCameraAsync();
                         await CleanupUiAsync();
                     }
                 };
@@ -598,7 +476,6 @@ namespace CameraStarterKit
                 await Windows.UI.ViewManagement.StatusBar.GetForCurrentView().HideAsync();
             }
 
-            RegisterEventHandlers();
             var picturesLibrary = await StorageLibrary.GetLibraryAsync(KnownLibraryId.Pictures);
             // Fall back to the local app storage if the Pictures Library is not available
             _captureFolder = picturesLibrary.SaveFolder ?? ApplicationData.Current.LocalFolder;
@@ -610,7 +487,7 @@ namespace CameraStarterKit
         /// <returns></returns>
         private async Task CleanupUiAsync()
         {
-            UnregisterEventHandlers();
+
 
             // Show the status bar
             if (ApiInformation.IsTypePresent("Windows.UI.ViewManagement.StatusBar"))
@@ -648,26 +525,7 @@ namespace CameraStarterKit
         /// <summary>
         /// Registers event handlers for hardware buttons and orientation sensors, and performs an initial update of the UI rotation
         /// </summary>
-        private void RegisterEventHandlers()
-        {
-            if (ApiInformation.IsTypePresent("Windows.Phone.UI.Input.HardwareButtons"))
-            {
-                HardwareButtons.CameraPressed += HardwareButtons_CameraPressed;
-            }
-            _systemMediaControls.PropertyChanged += SystemMediaControls_PropertyChanged;
-        }
 
-        /// <summary>
-        /// Unregisters event handlers for hardware buttons and orientation sensors
-        /// </summary>
-        private void UnregisterEventHandlers()
-        {
-            if (ApiInformation.IsTypePresent("Windows.Phone.UI.Input.HardwareButtons"))
-            {
-                HardwareButtons.CameraPressed -= HardwareButtons_CameraPressed;
-            }
-            _systemMediaControls.PropertyChanged -= SystemMediaControls_PropertyChanged;
-        }
 
         /// <summary>
         /// Attempts to find and return a device mounted on the panel specified, and on failure to find one it will return the first device listed

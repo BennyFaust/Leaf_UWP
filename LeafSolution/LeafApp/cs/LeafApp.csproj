@@ -95,6 +95,7 @@
     <Content Include="..\..\..\SharedContent\cs\Default.rd.xml">
       <Link>Properties\Default.rd.xml</Link>
     </Content>
+    <Content Include="Assets\8148e6668425f602_org.png" />
     <Content Include="Assets\BadgeLogo.scale-100.png" />
     <Content Include="Assets\BadgeLogo.scale-125.png" />
     <Content Include="Assets\BadgeLogo.scale-150.png" />
