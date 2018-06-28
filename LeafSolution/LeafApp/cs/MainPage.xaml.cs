@@ -79,7 +79,7 @@ namespace CameraStarterKit
         // Rotation Helper to simplify handling rotation compensation for the camera streams
         private CameraRotationHelper _rotationHelper;
 
-        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("KEYHERE", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
+        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
 
         #region Constructor, lifecycle and navigation
 
@@ -198,7 +198,7 @@ namespace CameraStarterKit
         {
             if (!_isRecording)
             {
-                await StartRecordingAsync();
+                StartRecordingAsync();
             }
             else
             {
@@ -393,13 +393,24 @@ namespace CameraStarterKit
             VideoButton.Opacity = 1;
         }
 
+        /*
+        private Timer timer1;
+        public void InitTimer()
+        {
+            timer1 = new Timer();
+            timer1.Tick += new EventHandler(timer1_Tick);
+            timer1.Interval = 2000; // in miliseconds
+            timer1.Start();
+        }
+        */
+
         /// <summary>
-        /// Records an MP4 video to a StorageFile and adds rotation metadata to it
+        /// sends a picture to the face api every x seconds
         /// </summary>
         /// <returns></returns>
-        private async Task StartRecordingAsync()
+        private void StartRecordingAsync()
         {
-
+            PhotoButton_Click(null, null);
                 _isRecording = true;
 
         }
