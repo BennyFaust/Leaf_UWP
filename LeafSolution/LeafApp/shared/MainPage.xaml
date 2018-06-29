@@ -18,7 +18,7 @@
     xmlns:local="using:CameraStarterKit"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d" FocusVisualPrimaryBrush="{x:Null}" Foreground="{x:Null}" FocusVisualSecondaryBrush="{x:Null}">
+    mc:Ignorable="d" FocusVisualPrimaryBrush="{x:Null}" Foreground="{x:Null}" FocusVisualSecondaryBrush="{x:Null}" RequestedTheme="Dark" FontFamily="Montserrat Medium">
 
     <Page.Resources>
         <SolidColorBrush x:Key="TranslucentBlackBrush" Color="Black" Opacity="0.3"/>
@@ -34,8 +34,9 @@
         </Grid.ColumnDefinitions>
 
         <!--Camera preview-->
-        <CaptureElement Name="PreviewControl" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,300" VerticalAlignment="Top"/>
-
+        <!-- Capture + Record buttons -->
+        <CaptureElement x:Name="PreviewControl" Stretch="Uniform" HorizontalAlignment="Stretch" Margin="0,0,0,300" VerticalAlignment="Stretch"/>
+        <Canvas x:Name="cvsFaceOverlay" HorizontalAlignment="Stretch" Margin="0,0,0,300" VerticalAlignment="Stretch"/>
         <!-- Capture + Record buttons -->
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Bottom" Grid.Column="1" Margin="0,0,0,0" Orientation="Horizontal">
             <StackPanel.Resources>
@@ -50,7 +51,7 @@
                 </Style>
             </StackPanel.Resources>
 
-            <Button Name="PhotoButton" Click="PhotoButton_Click" IsEnabled="False" Margin="0,0,5,0" HorizontalAlignment="Left" VerticalAlignment="Stretch">
+            <Button x:Name="PhotoButton" Click="PhotoButton_Click" IsEnabled="False" Margin="0,0,5,0" HorizontalAlignment="Left" VerticalAlignment="Stretch">
                 <Viewbox MaxHeight="40" MaxWidth="40">
                     <SymbolIcon Symbol="Camera"/>
                 </Viewbox>
@@ -64,9 +65,7 @@
         </StackPanel>
 
         <ScrollViewer x:Name="ScrollViewer_Status" Grid.Column="1" Margin="0,90,0,90" FocusVisualPrimaryBrush="{x:Null}" Foreground="{x:Null}" BorderBrush="{x:Null}" Background="{x:Null}" FocusVisualSecondaryBrush="{x:Null}">
-            <TextBox x:Name="TextBoxEmo"   AcceptsReturn="True" Grid.Column="1" HorizontalAlignment="Stretch" Margin="10,2,10,0" Text="" VerticalAlignment="Stretch" Background="{x:Null}" BorderBrush="{x:Null}" FocusVisualPrimaryBrush="{x:Null}" FocusVisualSecondaryBrush="{x:Null}" SelectionHighlightColor="White" FontFamily="Montserrat SemiBold" FontSize="18" PlaceholderText="" HorizontalTextAlignment="Center" IsReadOnly="True" IsHitTestVisible="False" IsTextPredictionEnabled="False" TextWrapping="Wrap" SelectionHighlightColorWhenNotFocused="{x:Null}">
-
-            </TextBox>
+            <TextBox x:Name="TextBoxEmo"   AcceptsReturn="True" Grid.Column="1" HorizontalAlignment="Stretch" Margin="10,2,10,0" Text="" VerticalAlignment="Stretch" Background="{x:Null}" BorderBrush="{x:Null}" FocusVisualPrimaryBrush="{x:Null}" FocusVisualSecondaryBrush="{x:Null}" SelectionHighlightColor="White" FontFamily="Montserrat SemiBold" FontSize="18" PlaceholderText="" HorizontalTextAlignment="Center" IsReadOnly="True" IsHitTestVisible="False" IsTextPredictionEnabled="False" TextWrapping="Wrap" SelectionHighlightColorWhenNotFocused="{x:Null}"/>
         </ScrollViewer>
     </Grid>
 </Page>

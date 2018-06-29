@@ -1,15 +1,4 @@
-﻿//*********************************************************
-//
-// Copyright (c) Microsoft. All rights reserved.
-// This code is licensed under the MIT License (MIT).
-// THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF
-// ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING ANY
-// IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR
-// PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
-//
-//*********************************************************
-
-using System;
+﻿using System;
 using System.IO;
 using System.Collections;
 using System.Diagnostics;
@@ -42,9 +31,14 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Net;
 using System.Net.NetworkInformation;
+using Windows.System.Threading;
+using Windows.Media.Core;
+using Windows.UI.Xaml.Shapes;
+using Windows.UI;
 
 namespace CameraStarterKit
 {
+
 
     public sealed partial class MainPage : Page
     {
@@ -66,6 +60,12 @@ namespace CameraStarterKit
         private bool _isPreviewing;
         private bool _isRecording;
 
+        private FaceDetectionEffect _faceDetectionEffect;
+        private IMediaEncodingProperties _previewProperties;
+        ThreadPoolTimer PeriodicTimer;
+        //seconds to next picture if face is detected
+        public int period = 3;
+
         // UI state
         private bool _isSuspending;
         private bool _isActivePage;
@@ -79,14 +79,13 @@ namespace CameraStarterKit
         // Rotation Helper to simplify handling rotation compensation for the camera streams
         private CameraRotationHelper _rotationHelper;
 
-        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
+        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("KEYHERE", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
 
         #region Constructor, lifecycle and navigation
 
         public MainPage()
         {
             this.InitializeComponent();
-
             // Do not cache the state of the UI when suspending/navigating
             NavigationCacheMode = NavigationCacheMode.Disabled;
         }
@@ -152,60 +151,103 @@ namespace CameraStarterKit
         /// <param name="args"></param>
 
 
+        private async void FaceDetect()
+        {
+            var faceDetectionDefinition = new FaceDetectionEffectDefinition();
+            faceDetectionDefinition.DetectionMode = FaceDetectionMode.HighQuality;
+            faceDetectionDefinition.SynchronousDetectionEnabled = false;
+            _faceDetectionEffect = (FaceDetectionEffect)await _mediaCapture.AddVideoEffectAsync(faceDetectionDefinition, MediaStreamType.VideoPreview);
+            _faceDetectionEffect.FaceDetected += FaceDetectionEffect_FaceDetected;
+            _faceDetectionEffect.DesiredDetectionInterval = TimeSpan.FromMilliseconds(33);
+            _faceDetectionEffect.Enabled = true;
+        }
+
+        private async void FaceStopDetect()
+        {
+            _faceDetectionEffect.Enabled = false;
+            _faceDetectionEffect.FaceDetected -= FaceDetectionEffect_FaceDetected;
+            await _mediaCapture.ClearEffectsAsync(MediaStreamType.VideoPreview);
+            _faceDetectionEffect = null; this.cvsFaceOverlay.Children.Clear();
+            this.cvsFaceOverlay.Children.Clear();
+        }
+
+        private async void FaceDetectionEffect_FaceDetected(FaceDetectionEffect sender, FaceDetectedEventArgs args)
+        {
+            var detectedFaces = args.ResultFrame.DetectedFaces;
+            await Dispatcher
+              .RunAsync(CoreDispatcherPriority.Normal,
+                () => DrawFaceBoxes(detectedFaces));
+        }
+
+        private void DrawFaceBoxes(IReadOnlyList<DetectedFace> detectedFaces)
+        {
+            cvsFaceOverlay.Children.Clear();
+            for (int i = 0; i < detectedFaces.Count; i++)
+            {
+                var face = detectedFaces[i];
+                var faceBounds = face.FaceBox;
+                Rectangle faceHighlightRectangle = new Rectangle()
+                {
+                    Height = faceBounds.Height,
+                    Width = faceBounds.Width
+                };
+                Canvas.SetLeft(faceHighlightRectangle, faceBounds.X);
+                Canvas.SetTop(faceHighlightRectangle, faceBounds.Y);
+                faceHighlightRectangle.StrokeThickness = 2;
+                faceHighlightRectangle.Stroke = new SolidColorBrush(Colors.LightCyan);
+                cvsFaceOverlay.Children.Add(faceHighlightRectangle);
+            }
+        }
 
 
 
         private async void PhotoButton_Click(object sender, RoutedEventArgs e)
         {
+            await AnalyzeFace();
+        }
+
+        private async Task AnalyzeFace()
+        {
             var requiredFaceAttributes = new FaceAttributeType[] {
                     FaceAttributeType.Age,
                     FaceAttributeType.Gender,
-                    FaceAttributeType.Smile,
                     FaceAttributeType.Emotion,
-                    FaceAttributeType.FacialHair,
-                    FaceAttributeType.HeadPose,
-                    FaceAttributeType.Glasses
                     };
 
             using (var captureStream = new InMemoryRandomAccessStream())
             {
-                 await _mediaCapture.CapturePhotoToStreamAsync(ImageEncodingProperties.CreateJpeg(), captureStream);
-                 captureStream.Seek(0);
-                 var faces = await faceServiceClient.DetectAsync(captureStream.AsStream(), returnFaceLandmarks: true, returnFaceAttributes: requiredFaceAttributes);
-                
+                await _mediaCapture.CapturePhotoToStreamAsync(ImageEncodingProperties.CreateJpeg(), captureStream);
+                captureStream.Seek(0);
+                var faces = await faceServiceClient.DetectAsync(captureStream.AsStream(), returnFaceLandmarks: true, returnFaceAttributes: requiredFaceAttributes);
+
                 foreach (var face in faces)
                 {
-                    var emotion = face.FaceAttributes.Emotion;
                     var id = face.FaceId;
                     var attributes = face.FaceAttributes;
+                    var emotion = attributes.Emotion;
                     var age = attributes.Age;
                     var gender = attributes.Gender;
-                    var smile = attributes.Smile;
-                    var facialHair = attributes.FacialHair;
-                    var headPose = attributes.HeadPose;
-                    var glasses = attributes.Glasses;
                     TextBoxEmo.Text += ("Happiness: " + emotion.Happiness + "\r\n");
                     TextBoxEmo.Text += ("Anger: " + emotion.Anger + "\r\n");
-                    TextBoxEmo.Text += ("Sadness: " + emotion.Sadness + "\r\n" + "\r\n" );
+                    TextBoxEmo.Text += ("Sadness: " + emotion.Sadness + "\r\n" + "\r\n");
 
                     Debug.WriteLine(emotion.Anger + emotion.Happiness + emotion.Neutral + emotion.Sadness);
                 }
             };
         }
 
-
-        private async void VideoButton_Click(object sender, RoutedEventArgs e)
+        private void VideoButton_Click(object sender, RoutedEventArgs e)
         {
             if (!_isRecording)
             {
-                StartRecordingAsync();
+                StartTimers();
+                _isRecording = true;
+                FaceDetect();
             }
             else
             {
                 Debug.WriteLine("Stopping recording...");
-
                 _isRecording = false;
-
             }
 
             // After starting or stopping video recording, update the UI to reflect the MediaCapture state
@@ -350,82 +392,28 @@ namespace CameraStarterKit
             await _mediaCapture.SetEncodingPropertiesAsync(MediaStreamType.VideoPreview, props, null);
         }
 
-        /// <summary>
-        /// Stops the preview and deactivates a display request, to allow the screen to go into power saving modes
-        /// </summary>
-        /// <returns></returns>
-        private async Task StopPreviewAsync()
-        {
-            // Stop the preview
-            _isPreviewing = false;
-            await _mediaCapture.StopPreviewAsync();
 
-            // Use the dispatcher because this method is sometimes called from non-UI threads
-            await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+
+
+        DispatcherTimer dispatcherTimer;
+        public void StartTimers()
+        {
+            dispatcherTimer = new DispatcherTimer();
+            dispatcherTimer.Tick += dispatcherTimer_Tick;
+            dispatcherTimer.Interval = new TimeSpan(0, 0, 3);
+        }
+
+        void dispatcherTimer_Tick(object sender, object e)
+        {
+            if (_isRecording)
             {
-                // Cleanup the UI
-                PreviewControl.Source = null;
-
-                // Allow the device screen to sleep now that the preview is stopped
-                _displayRequest.RequestRelease();
-            });
+                AnalyzeFace();
+                Debug.WriteLine("analyzing face...");
+            }
         }
 
-        /// <summary>
-        /// Takes a photo to a StorageFile and adds rotation metadata to it
-        /// </summary>
-        /// <returns></returns>
-        private async Task TakePhotoAsync()
-        {
-            // While taking a photo, keep the video button enabled only if the camera supports simultaneously taking pictures and recording video
-            VideoButton.IsEnabled = _mediaCapture.MediaCaptureSettings.ConcurrentRecordAndPhotoSupported;
-
-            // Make the button invisible if it's disabled, so it's obvious it cannot be interacted with
-            VideoButton.Opacity = VideoButton.IsEnabled ? 1 : 0;
-
-            var stream = new InMemoryRandomAccessStream();
-
-            Debug.WriteLine("Taking photo...");
-            await _mediaCapture.CapturePhotoToStreamAsync(ImageEncodingProperties.CreateJpeg(), stream);
-
-            // Done taking a photo, so re-enable the button
-            VideoButton.IsEnabled = true;
-            VideoButton.Opacity = 1;
-        }
-
-        /*
-        private Timer timer1;
-        public void InitTimer()
-        {
-            timer1 = new Timer();
-            timer1.Tick += new EventHandler(timer1_Tick);
-            timer1.Interval = 2000; // in miliseconds
-            timer1.Start();
-        }
-        */
-
-        /// <summary>
-        /// sends a picture to the face api every x seconds
-        /// </summary>
-        /// <returns></returns>
-        private void StartRecordingAsync()
-        {
-            PhotoButton_Click(null, null);
-                _isRecording = true;
-
-        }
-
-        /// <summary>
-        /// Stops recording a video
-        /// </summary>
-        /// <returns></returns>
 
 
-        /// <summary>
-        /// Cleans up the camera resources (after stopping any video recording and/or preview if necessary) and unregisters from MediaCapture events
-        /// </summary>
-        /// <returns></returns>
-       
         #endregion MediaCapture methods
 
 
@@ -519,18 +507,10 @@ namespace CameraStarterKit
             PhotoButton.IsEnabled = _isPreviewing;
             VideoButton.IsEnabled = _isPreviewing;
 
-            // Update recording button to show "Stop" icon instead of red "Record" icon
+            // Update recording button to show "Stop" icon instead of "Record" icon
             StartRecordingIcon.Visibility = _isRecording ? Visibility.Collapsed : Visibility.Visible;
             StopRecordingIcon.Visibility = _isRecording ? Visibility.Visible : Visibility.Collapsed;
 
-            // If the camera doesn't support simultaneosly taking pictures and recording video, disable the photo button on record
-            if (_isInitialized && !_mediaCapture.MediaCaptureSettings.ConcurrentRecordAndPhotoSupported)
-            {
-                PhotoButton.IsEnabled = !_isRecording;
-
-                // Make the button invisible if it's disabled, so it's obvious it cannot be interacted with
-                PhotoButton.Opacity = PhotoButton.IsEnabled ? 1 : 0;
-            }
         }
 
         /// <summary>
@@ -579,6 +559,57 @@ namespace CameraStarterKit
                 }
             }
         }
+
+        private Rectangle MapRectangleToDetectedFace(BitmapBounds detectedfaceBoxCoordinates)
+        {
+            var faceRectangle = new Rectangle();
+            var previewStreamPropterties =
+              _previewProperties as VideoEncodingProperties;
+            double mediaStreamWidth = previewStreamPropterties.Width;
+            double mediaStreamHeight = previewStreamPropterties.Height;
+            var faceHighlightRect = LocatePreviewStreamCoordinates(previewStreamPropterties,
+              this.PreviewControl);
+            faceRectangle.Width = (detectedfaceBoxCoordinates.Width / mediaStreamWidth) *
+              faceHighlightRect.Width;
+            faceRectangle.Height = (detectedfaceBoxCoordinates.Height / mediaStreamHeight) *
+              faceHighlightRect.Height;
+            var x = (detectedfaceBoxCoordinates.X / mediaStreamWidth) *
+              faceHighlightRect.Width;
+            var y = (detectedfaceBoxCoordinates.Y / mediaStreamHeight) *
+              faceHighlightRect.Height;
+            Canvas.SetLeft(faceRectangle, x);
+            Canvas.SetTop(faceRectangle, y);
+            return faceRectangle;
+        }
+        public Rect LocatePreviewStreamCoordinates(
+          VideoEncodingProperties previewResolution,
+          CaptureElement previewControl)
+        {
+            var uiRectangle = new Rect();
+            var mediaStreamWidth = previewResolution.Width;
+            var mediaStreamHeight = previewResolution.Height;
+            uiRectangle.Width = previewControl.ActualWidth;
+            uiRectangle.Height = previewControl.ActualHeight;
+            var uiRatio = previewControl.ActualWidth / previewControl.ActualHeight;
+            var mediaStreamRatio = mediaStreamWidth / mediaStreamHeight;
+            if (uiRatio > mediaStreamRatio)
+            {
+                var scaleFactor = previewControl.ActualHeight / mediaStreamHeight;
+                var scaledWidth = mediaStreamWidth * scaleFactor;
+                uiRectangle.X = (previewControl.ActualWidth - scaledWidth) / 2.0;
+                uiRectangle.Width = scaledWidth;
+            }
+            else
+            {
+                var scaleFactor = previewControl.ActualWidth / mediaStreamWidth;
+                var scaledHeight = mediaStreamHeight * scaleFactor;
+                uiRectangle.Y = (previewControl.ActualHeight - scaledHeight) / 2.0;
+                uiRectangle.Height = scaledHeight;
+            }
+            return uiRectangle;
+        }
+
+
 
         #endregion Helper functions
 
