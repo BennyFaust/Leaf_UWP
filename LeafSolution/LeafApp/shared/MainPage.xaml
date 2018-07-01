@@ -18,6 +18,7 @@
     xmlns:local="using:CameraStarterKit"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:lvc="using:LiveCharts.Uwp"
     mc:Ignorable="d" FocusVisualPrimaryBrush="{x:Null}" Foreground="{x:Null}" FocusVisualSecondaryBrush="{x:Null}" RequestedTheme="Dark" FontFamily="Montserrat Medium">
 
     <Page.Resources>
@@ -63,9 +64,6 @@
                 </Grid>
             </Button>
         </StackPanel>
-
-        <ScrollViewer x:Name="ScrollViewer_Status" Grid.Column="1" Margin="0,90,0,90" FocusVisualPrimaryBrush="{x:Null}" Foreground="{x:Null}" BorderBrush="{x:Null}" Background="{x:Null}" FocusVisualSecondaryBrush="{x:Null}">
-            <TextBox x:Name="TextBoxEmo"   AcceptsReturn="True" Grid.Column="1" HorizontalAlignment="Stretch" Margin="10,2,10,0" Text="" VerticalAlignment="Stretch" Background="{x:Null}" BorderBrush="{x:Null}" FocusVisualPrimaryBrush="{x:Null}" FocusVisualSecondaryBrush="{x:Null}" SelectionHighlightColor="White" FontFamily="Montserrat SemiBold" FontSize="18" PlaceholderText="" HorizontalTextAlignment="Center" IsReadOnly="True" IsHitTestVisible="False" IsTextPredictionEnabled="False" TextWrapping="Wrap" SelectionHighlightColorWhenNotFocused="{x:Null}"/>
-        </ScrollViewer>
+        <ListView x:Name="emotionList" HorizontalAlignment="Stretch" Margin="0,40,0,100" VerticalAlignment="Stretch" SelectionMode="None" FontFamily="Montserrat Medium" FontSize="14" FocusVisualPrimaryBrush="{x:Null}" FocusVisualSecondaryBrush="{x:Null}" Foreground="White" Grid.Column="1"/>
     </Grid>
 </Page>

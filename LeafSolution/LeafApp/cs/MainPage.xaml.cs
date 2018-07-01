@@ -35,6 +35,8 @@ using Windows.System.Threading;
 using Windows.Media.Core;
 using Windows.UI.Xaml.Shapes;
 using Windows.UI;
+using LiveCharts;
+using LiveCharts.Uwp;
 
 namespace CameraStarterKit
 {
@@ -62,9 +64,7 @@ namespace CameraStarterKit
 
         private FaceDetectionEffect _faceDetectionEffect;
         private IMediaEncodingProperties _previewProperties;
-        ThreadPoolTimer PeriodicTimer;
-        //seconds to next picture if face is detected
-        public int period = 3;
+        //ThreadPoolTimer PeriodicTimer;
 
         // UI state
         private bool _isSuspending;
@@ -79,7 +79,7 @@ namespace CameraStarterKit
         // Rotation Helper to simplify handling rotation compensation for the camera streams
         private CameraRotationHelper _rotationHelper;
 
-        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("KEYHERE", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
+        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("f204349e9a9f40578bd5ff7e30e464ab", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
 
         #region Constructor, lifecycle and navigation
 
@@ -154,7 +154,7 @@ namespace CameraStarterKit
         private async void FaceDetect()
         {
             var faceDetectionDefinition = new FaceDetectionEffectDefinition();
-            faceDetectionDefinition.DetectionMode = FaceDetectionMode.HighQuality;
+            faceDetectionDefinition.DetectionMode = FaceDetectionMode.Balanced;
             faceDetectionDefinition.SynchronousDetectionEnabled = false;
             _faceDetectionEffect = (FaceDetectionEffect)await _mediaCapture.AddVideoEffectAsync(faceDetectionDefinition, MediaStreamType.VideoPreview);
             _faceDetectionEffect.FaceDetected += FaceDetectionEffect_FaceDetected;
@@ -200,12 +200,11 @@ namespace CameraStarterKit
         }
 
 
-
         private async void PhotoButton_Click(object sender, RoutedEventArgs e)
         {
             await AnalyzeFace();
         }
-
+        public float mood;
         private async Task AnalyzeFace()
         {
             var requiredFaceAttributes = new FaceAttributeType[] {
@@ -222,21 +221,21 @@ namespace CameraStarterKit
 
                 foreach (var face in faces)
                 {
-                    var id = face.FaceId;
                     var attributes = face.FaceAttributes;
                     var emotion = attributes.Emotion;
                     var age = attributes.Age;
                     var gender = attributes.Gender;
-                    TextBoxEmo.Text += ("Happiness: " + emotion.Happiness + "\r\n");
-                    TextBoxEmo.Text += ("Anger: " + emotion.Anger + "\r\n");
-                    TextBoxEmo.Text += ("Sadness: " + emotion.Sadness + "\r\n" + "\r\n");
+                    //get the mood from all emotions
+                    mood = emotion.Neutral + ((emotion.Happiness + emotion.Contempt) / 2) - ((emotion.Sadness + emotion.Anger) / 2);
+                    emotionList.Items.Add ("mood: " + mood);
 
-                    Debug.WriteLine(emotion.Anger + emotion.Happiness + emotion.Neutral + emotion.Sadness);
+
                 }
+                emotionList.ScrollIntoView(emotionList.Items[emotionList.Items.Count - 1]);
             };
         }
 
-        private void VideoButton_Click(object sender, RoutedEventArgs e)
+        private async void VideoButton_Click(object sender, RoutedEventArgs e)
         {
             if (!_isRecording)
             {
@@ -396,22 +395,31 @@ namespace CameraStarterKit
 
 
         DispatcherTimer dispatcherTimer;
+        DateTimeOffset startTime;
+        DateTimeOffset lastTime;
+        DateTimeOffset stopTime;
+        int timesTicked = 1;
+        int timesToTick = 10;
         public void StartTimers()
         {
             dispatcherTimer = new DispatcherTimer();
             dispatcherTimer.Tick += dispatcherTimer_Tick;
-            dispatcherTimer.Interval = new TimeSpan(0, 0, 3);
+            dispatcherTimer.Interval = new TimeSpan(0, 0, 5);
+            //IsEnabled defaults to false
+            startTime = DateTimeOffset.Now;
+            lastTime = startTime;
+            dispatcherTimer.Start();
+            //IsEnabled should now be true after calling start
         }
 
-        void dispatcherTimer_Tick(object sender, object e)
+        public async void dispatcherTimer_Tick(object sender, object e)
         {
             if (_isRecording)
             {
-                AnalyzeFace();
+                await AnalyzeFace();
                 Debug.WriteLine("analyzing face...");
             }
         }
-
 
 
         #endregion MediaCapture methods

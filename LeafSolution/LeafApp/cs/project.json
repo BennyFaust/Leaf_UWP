@@ -1,6 +1,7 @@
 ﻿{
   "dependencies": {
-    "Microsoft.NETCore.UniversalWindowsPlatform": "5.0.0",
+    "LiveCharts.Uwp": "0.8.0",
+    "Microsoft.NETCore.UniversalWindowsPlatform": "6.1.5",
     "Microsoft.ProjectOxford.Face": "1.4.0"
   },
   "frameworks": {
