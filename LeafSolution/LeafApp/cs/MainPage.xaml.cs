@@ -79,7 +79,7 @@ namespace CameraStarterKit
         // Rotation Helper to simplify handling rotation compensation for the camera streams
         private CameraRotationHelper _rotationHelper;
 
-        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("f204349e9a9f40578bd5ff7e30e464ab", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
+        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
 
         #region Constructor, lifecycle and navigation
 
