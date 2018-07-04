@@ -35,7 +35,12 @@ using Windows.System.Threading;
 using Windows.Media.Core;
 using Windows.UI.Xaml.Shapes;
 using Windows.UI;
+<<<<<<< HEAD
 using MySql.Data.MySqlClient;
+=======
+using LiveCharts;
+using LiveCharts.Uwp;
+>>>>>>> e1b1cf3dc6d5028609ec623ba7af9b283ed74bbc
 
 namespace CameraStarterKit
 {
@@ -63,9 +68,7 @@ namespace CameraStarterKit
 
         private FaceDetectionEffect _faceDetectionEffect;
         private IMediaEncodingProperties _previewProperties;
-        ThreadPoolTimer PeriodicTimer;
-        //seconds to next picture if face is detected
-        public int period = 3;
+        //ThreadPoolTimer PeriodicTimer;
 
         // UI state
         private bool _isSuspending;
@@ -80,8 +83,13 @@ namespace CameraStarterKit
         // Rotation Helper to simplify handling rotation compensation for the camera streams
         private CameraRotationHelper _rotationHelper;
 
+<<<<<<< HEAD
         private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("keyhere", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
         const string ConnectionString = "Server=192.168.43.77;Port=3306;Database=emotions;Uid=Benny;Pwd=leafshmeaf34sieb;Encrypt=false;";
+=======
+        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
+
+>>>>>>> e1b1cf3dc6d5028609ec623ba7af9b283ed74bbc
         #region Constructor, lifecycle and navigation
 
         public MainPage()
@@ -156,7 +164,7 @@ namespace CameraStarterKit
         private async void FaceDetect()
         {
             var faceDetectionDefinition = new FaceDetectionEffectDefinition();
-            faceDetectionDefinition.DetectionMode = FaceDetectionMode.HighQuality;
+            faceDetectionDefinition.DetectionMode = FaceDetectionMode.Balanced;
             faceDetectionDefinition.SynchronousDetectionEnabled = false;
             _faceDetectionEffect = (FaceDetectionEffect)await _mediaCapture.AddVideoEffectAsync(faceDetectionDefinition, MediaStreamType.VideoPreview);
             _faceDetectionEffect.FaceDetected += FaceDetectionEffect_FaceDetected;
@@ -202,12 +210,11 @@ namespace CameraStarterKit
         }
 
 
-
         private async void PhotoButton_Click(object sender, RoutedEventArgs e)
         {
             await AnalyzeFace();
         }
-
+        public float mood;
         private async Task AnalyzeFace()
         {
 
@@ -226,15 +233,16 @@ namespace CameraStarterKit
 
                 foreach (var face in faces)
                 {
-                    var id = face.FaceId;
                     var attributes = face.FaceAttributes;
                     var emotion = attributes.Emotion;
                     var age = attributes.Age;
                     var gender = attributes.Gender;
-                    TextBoxEmo.Text += ("Happiness: " + emotion.Happiness + "\r\n");
-                    TextBoxEmo.Text += ("Anger: " + emotion.Anger + "\r\n");
-                    TextBoxEmo.Text += ("Sadness: " + emotion.Sadness + "\r\n" + "\r\n");
+                    //get the mood from all emotions
+                    mood = emotion.Neutral + ((emotion.Happiness + emotion.Contempt) / 2) - ((emotion.Sadness + emotion.Anger) / 2);
+                    emotionList.Items.Add ("mood: " + mood);
 
+
+<<<<<<< HEAD
                     Debug.WriteLine(emotion.Anger + emotion.Happiness + emotion.Neutral + emotion.Sadness);
                     mood = emotion.Neutral + emotion.Happiness - emotion.Anger;
                 }
@@ -258,6 +266,14 @@ namespace CameraStarterKit
         }
 
         private void VideoButton_Click(object sender, RoutedEventArgs e)
+=======
+                }
+                emotionList.ScrollIntoView(emotionList.Items[emotionList.Items.Count - 1]);
+            };
+        }
+
+        private async void VideoButton_Click(object sender, RoutedEventArgs e)
+>>>>>>> e1b1cf3dc6d5028609ec623ba7af9b283ed74bbc
         {
             if (!_isRecording)
             {
@@ -417,22 +433,31 @@ namespace CameraStarterKit
 
 
         DispatcherTimer dispatcherTimer;
+        DateTimeOffset startTime;
+        DateTimeOffset lastTime;
+        DateTimeOffset stopTime;
+        int timesTicked = 1;
+        int timesToTick = 10;
         public void StartTimers()
         {
             dispatcherTimer = new DispatcherTimer();
             dispatcherTimer.Tick += dispatcherTimer_Tick;
-            dispatcherTimer.Interval = new TimeSpan(0, 0, 3);
+            dispatcherTimer.Interval = new TimeSpan(0, 0, 5);
+            //IsEnabled defaults to false
+            startTime = DateTimeOffset.Now;
+            lastTime = startTime;
+            dispatcherTimer.Start();
+            //IsEnabled should now be true after calling start
         }
 
-        void dispatcherTimer_Tick(object sender, object e)
+        public async void dispatcherTimer_Tick(object sender, object e)
         {
             if (_isRecording)
             {
-                AnalyzeFace();
+                await AnalyzeFace();
                 Debug.WriteLine("analyzing face...");
             }
         }
-
 
 
         #endregion MediaCapture methods

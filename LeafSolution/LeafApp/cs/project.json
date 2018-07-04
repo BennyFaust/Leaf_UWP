@@ -1,8 +1,14 @@
 ﻿{
   "dependencies": {
+<<<<<<< HEAD
     "Microsoft.NETCore.UniversalWindowsPlatform": "6.1.5",
     "Microsoft.ProjectOxford.Face": "1.4.0",
     "MySql.Data": "8.0.11"
+=======
+    "LiveCharts.Uwp": "0.8.0",
+    "Microsoft.NETCore.UniversalWindowsPlatform": "6.1.5",
+    "Microsoft.ProjectOxford.Face": "1.4.0"
+>>>>>>> e1b1cf3dc6d5028609ec623ba7af9b283ed74bbc
   },
   "frameworks": {
     "uap10.0.17134": {}
