@@ -35,6 +35,7 @@ using Windows.System.Threading;
 using Windows.Media.Core;
 using Windows.UI.Xaml.Shapes;
 using Windows.UI;
+using MySql.Data.MySqlClient;
 
 namespace CameraStarterKit
 {
@@ -79,8 +80,8 @@ namespace CameraStarterKit
         // Rotation Helper to simplify handling rotation compensation for the camera streams
         private CameraRotationHelper _rotationHelper;
 
-        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("KEYHERE", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
-
+        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("keyhere", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
+        const string ConnectionString = "Server=192.168.43.77;Port=3306;Database=emotions;Uid=Benny;Pwd=leafshmeaf34sieb;Encrypt=false;";
         #region Constructor, lifecycle and navigation
 
         public MainPage()
@@ -88,6 +89,8 @@ namespace CameraStarterKit
             this.InitializeComponent();
             // Do not cache the state of the UI when suspending/navigating
             NavigationCacheMode = NavigationCacheMode.Disabled;
+
+
         }
 
         private void Application_Suspending(object sender, SuspendingEventArgs e)
@@ -135,7 +138,6 @@ namespace CameraStarterKit
         }
 
         #endregion Constructor, lifecycle and navigation
-
 
         #region Event handlers
         private async void Window_VisibilityChanged(object sender, VisibilityChangedEventArgs args)
@@ -208,6 +210,7 @@ namespace CameraStarterKit
 
         private async Task AnalyzeFace()
         {
+
             var requiredFaceAttributes = new FaceAttributeType[] {
                     FaceAttributeType.Age,
                     FaceAttributeType.Gender,
@@ -216,6 +219,7 @@ namespace CameraStarterKit
 
             using (var captureStream = new InMemoryRandomAccessStream())
             {
+                float mood = 0.5f;
                 await _mediaCapture.CapturePhotoToStreamAsync(ImageEncodingProperties.CreateJpeg(), captureStream);
                 captureStream.Seek(0);
                 var faces = await faceServiceClient.DetectAsync(captureStream.AsStream(), returnFaceLandmarks: true, returnFaceAttributes: requiredFaceAttributes);
@@ -232,8 +236,25 @@ namespace CameraStarterKit
                     TextBoxEmo.Text += ("Sadness: " + emotion.Sadness + "\r\n" + "\r\n");
 
                     Debug.WriteLine(emotion.Anger + emotion.Happiness + emotion.Neutral + emotion.Sadness);
+                    mood = emotion.Neutral + emotion.Happiness - emotion.Anger;
                 }
+
+                await SaveToDB(mood);
             };
+        }
+
+        private async Task SaveToDB(float mood)
+        {
+            using (MySqlConnection sqlConn = new MySqlConnection(ConnectionString))
+            {
+                sqlConn.Open();
+                ConnectionText.Text = ("connection status:" + sqlConn.State.ToString());
+                MySqlCommand cmd = new MySqlCommand();// Creating instance of SqlCommand
+                cmd.Connection = sqlConn; // set the connection to instance of SqlCommand
+                cmd.CommandText = "INSERT INTO emotiondata VALUES(" + 38 + ", Now(), " + mood + "); ";
+                cmd.ExecuteNonQuery();
+                sqlConn.Close();
+            }
         }
 
         private void VideoButton_Click(object sender, RoutedEventArgs e)

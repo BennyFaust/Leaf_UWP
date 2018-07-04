@@ -1,7 +1,8 @@
 ﻿{
   "dependencies": {
-    "Microsoft.NETCore.UniversalWindowsPlatform": "5.0.0",
-    "Microsoft.ProjectOxford.Face": "1.4.0"
+    "Microsoft.NETCore.UniversalWindowsPlatform": "6.1.5",
+    "Microsoft.ProjectOxford.Face": "1.4.0",
+    "MySql.Data": "8.0.11"
   },
   "frameworks": {
     "uap10.0.17134": {}

@@ -67,5 +67,6 @@
         <ScrollViewer x:Name="ScrollViewer_Status" Grid.Column="1" Margin="0,90,0,90" FocusVisualPrimaryBrush="{x:Null}" Foreground="{x:Null}" BorderBrush="{x:Null}" Background="{x:Null}" FocusVisualSecondaryBrush="{x:Null}">
             <TextBox x:Name="TextBoxEmo"   AcceptsReturn="True" Grid.Column="1" HorizontalAlignment="Stretch" Margin="10,2,10,0" Text="" VerticalAlignment="Stretch" Background="{x:Null}" BorderBrush="{x:Null}" FocusVisualPrimaryBrush="{x:Null}" FocusVisualSecondaryBrush="{x:Null}" SelectionHighlightColor="White" FontFamily="Montserrat SemiBold" FontSize="18" PlaceholderText="" HorizontalTextAlignment="Center" IsReadOnly="True" IsHitTestVisible="False" IsTextPredictionEnabled="False" TextWrapping="Wrap" SelectionHighlightColorWhenNotFocused="{x:Null}"/>
         </ScrollViewer>
+        <TextBlock x:Name="ConnectionText" Grid.Column="1" HorizontalAlignment="Right" Text="TextBlock" TextWrapping="Wrap" VerticalAlignment="Bottom" Height="10" Width="109" FontFamily="Global Monospace" FontSize="8" FocusVisualPrimaryBrush="{x:Null}" FocusVisualSecondaryBrush="{x:Null}" SelectionHighlightColor="{x:Null}" Foreground="Black" Margin="0,0,0,5"/>
     </Grid>
 </Page>
