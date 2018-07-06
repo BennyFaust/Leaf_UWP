@@ -80,7 +80,7 @@ namespace CameraStarterKit
         // Rotation Helper to simplify handling rotation compensation for the camera streams
         private CameraRotationHelper _rotationHelper;
 
-        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
+        private readonly IFaceServiceClient faceServiceClient = new FaceServiceClient("578d0d80758946c0a9f0432e604970f0", "https://westeurope.api.cognitive.microsoft.com/face/v1.0");
         const string ConnectionString = "Server=192.168.43.77;Port=3306;Database=emotions;Uid=Benny;Pwd=leafshmeaf34sieb;Encrypt=false;";
         #region Constructor, lifecycle and navigation
 
@@ -201,6 +201,8 @@ namespace CameraStarterKit
                     FaceAttributeType.Age,
                     FaceAttributeType.Gender,
                     FaceAttributeType.Emotion,
+                    FaceAttributeType.FacialHair,
+                    FaceAttributeType.Glasses
             };
 
             using (var captureStream = new InMemoryRandomAccessStream())
@@ -213,30 +215,30 @@ namespace CameraStarterKit
 
                 foreach (var face in faces)
                 {
-                    var id = face.FaceId;
-                    uid = id;
+                    var emotion = face.FaceAttributes.Emotion;
                     var attributes = face.FaceAttributes;
-                    var emotion = attributes.Emotion;
                     var age = attributes.Age;
                     var gender = attributes.Gender;
+                    var facialHair = attributes.FacialHair;
+                    var glasses = attributes.Glasses;
                     //get the mood from all emotions
-                    mood = emotion.Neutral + ((emotion.Happiness + emotion.Contempt) / 2) - ((emotion.Sadness + emotion.Anger) / 2);
+                    mood = emotion.Neutral / 2 + (emotion.Happiness - ((emotion.Sadness + emotion.Anger) / 2));
+                    mood = Math.Clamp(mood, 0.0f, 1.0f);
                     emotionList.Items.Add("mood: " + mood);
                     emotionList.ScrollIntoView(emotionList.Items[emotionList.Items.Count - 1]);
                 }
                 
-                await SaveToDB(mood, uid);
+              //  await SaveToDB(mood, uid);
             };
         }
-
+        public int userID = 1;
         private async Task SaveToDB(float mood, Guid uid)
         {
-            string stringid = uid.ToString();
             using (MySqlConnection sqlConn = new MySqlConnection(ConnectionString))
             {
                 sqlConn.Open();
                 ConnectionText.Text = ("connection status: " + sqlConn.State.ToString());
-                if (sqlConn.State.ToString() == "open")
+                if (sqlConn.State.ToString() == "Open")
                 {
                     ConnectionText.Foreground = new SolidColorBrush(Colors.Teal);
                 }
@@ -246,7 +248,7 @@ namespace CameraStarterKit
                 }
                 MySqlCommand cmd = new MySqlCommand();// Creating instance of SqlCommand
                 cmd.Connection = sqlConn; // set the connection to instance of SqlCommand
-                cmd.CommandText = "INSERT INTO emotiondata VALUES(" + stringid.Substring(0, 1) + ", Now()," + mood + ");";
+                cmd.CommandText = "INSERT INTO emotiondata VALUES(" + userID + ", Now()," + mood + ");";
                 cmd.ExecuteNonQuery();
                 sqlConn.Close();
             }
@@ -409,25 +411,32 @@ namespace CameraStarterKit
         }
 
 
-
-
         DispatcherTimer dispatcherTimer;
+        DateTimeOffset startTime;
+        DateTimeOffset lastTime;
+        DateTimeOffset stopTime;
+        int timesTicked = 1;
+        int timesToTick = 10;
         public void StartTimers()
         {
             dispatcherTimer = new DispatcherTimer();
             dispatcherTimer.Tick += dispatcherTimer_Tick;
-            dispatcherTimer.Interval = new TimeSpan(0, 0, 3);
+            dispatcherTimer.Interval = new TimeSpan(0, 0, 5);
+            //IsEnabled defaults to false
+            startTime = DateTimeOffset.Now;
+            lastTime = startTime;
+            dispatcherTimer.Start();
+            //IsEnabled should now be true after calling start
         }
 
-        void dispatcherTimer_Tick(object sender, object e)
+        public async void dispatcherTimer_Tick(object sender, object e)
         {
             if (_isRecording)
             {
-                AnalyzeFace();
+                await AnalyzeFace();
                 Debug.WriteLine("analyzing face...");
             }
         }
-
 
 
         #endregion MediaCapture methods
