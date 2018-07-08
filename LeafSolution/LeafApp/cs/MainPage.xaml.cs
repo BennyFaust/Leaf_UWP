@@ -168,9 +168,17 @@ namespace CameraStarterKit
               .RunAsync(CoreDispatcherPriority.Normal,
                 () => DrawFaceBoxes(detectedFaces));
         }
-
+        private bool faceOnCam;
         private void DrawFaceBoxes(IReadOnlyList<DetectedFace> detectedFaces)
         {
+            if (detectedFaces.Count > 0)
+            {
+                faceOnCam = true;
+            }
+            else
+            {
+                faceOnCam = false;
+            }
             cvsFaceOverlay.Children.Clear();
             for (int i = 0; i < detectedFaces.Count; i++)
             {
@@ -207,16 +215,15 @@ namespace CameraStarterKit
 
             using (var captureStream = new InMemoryRandomAccessStream())
             {
-                Guid uid;
                 float mood = 0.5f;
                 await _mediaCapture.CapturePhotoToStreamAsync(ImageEncodingProperties.CreateJpeg(), captureStream);
                 captureStream.Seek(0);
-                var faces = await faceServiceClient.DetectAsync(captureStream.AsStream(), returnFaceLandmarks: true, returnFaceAttributes: requiredFaceAttributes);
-
-                foreach (var face in faces)
+                var faces = await faceServiceClient.DetectAsync(captureStream.AsStream(), returnFaceId: true, returnFaceLandmarks: true, returnFaceAttributes: requiredFaceAttributes);
+                if (faces.Length > 0)
                 {
-                    var emotion = face.FaceAttributes.Emotion;
-                    var attributes = face.FaceAttributes;
+                    var faceId1 = faces[0].FaceId;
+                    var emotion = faces[0].FaceAttributes.Emotion;
+                    var attributes = faces[0].FaceAttributes;
                     var age = attributes.Age;
                     var gender = attributes.Gender;
                     var facialHair = attributes.FacialHair;
@@ -226,12 +233,36 @@ namespace CameraStarterKit
                     mood = Math.Clamp(mood, 0.0f, 1.0f);
                     emotionList.Items.Add("mood: " + mood);
                     emotionList.ScrollIntoView(emotionList.Items[emotionList.Items.Count - 1]);
+                    VerifyFace(faceId1);
                 }
-                
-              //  await SaveToDB(mood, uid);
+                else
+                {
+                    throw new Exception("No face found");
+                }
+            //  await SaveToDB(mood, userID);
             };
         }
+        //need to assign an existing user id everz 24 hours or rewrite code so it diesnt crash
+        public Guid lastUserId = Guid.Parse("273c0664-e633-4888-89cd-cfc7ff25fb37");
         public int userID = 1;
+
+        public async void VerifyFace(Guid face1)
+        {
+
+            if (lastUserId != null && face1 != null)
+            {
+                var res = await faceServiceClient.VerifyAsync(face1, lastUserId);
+                if (res.IsIdentical == false)
+                {
+                    userID++;
+                }
+
+                lastUserId = face1;
+                Debug.Print(userID + " ID   -  isIdentical: " + res.IsIdentical);
+            }
+        }
+
+
         private async Task SaveToDB(float mood, Guid uid)
         {
             using (MySqlConnection sqlConn = new MySqlConnection(ConnectionString))
@@ -431,7 +462,7 @@ namespace CameraStarterKit
 
         public async void dispatcherTimer_Tick(object sender, object e)
         {
-            if (_isRecording)
+            if (_isRecording && faceOnCam)
             {
                 await AnalyzeFace();
                 Debug.WriteLine("analyzing face...");
